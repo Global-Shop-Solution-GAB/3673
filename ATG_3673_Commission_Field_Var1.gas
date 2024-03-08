@@ -1,0 +1,179 @@
+Program.Sub.ScreenSU.Start
+Program.Sub.ScreenSU.End
+
+Program.Sub.Preflight.Start
+
+Program.Sub.Preflight.End
+
+Program.Sub.Main.Start
+F.ODBC.Connection!Conx.OpenConnection(V.Ambient.PDSN,V.Ambient.PUser,V.Ambient.PPass)
+
+V.Local.sCustomer.Declare(String)
+V.Local.sQuery.Declare(String)
+V.Local.bNumeric.Declare(Boolean)
+V.Local.sStrRet.Declare(String)
+V.Local.fComm.Declare(Float)
+V.Local.sVal.Declare(String)
+V.Local.istrLength.Declare(Long)
+V.local.bInStr.Declare(Boolean)
+V.Local.sComm_Desc.Declare(String)
+
+V.Local.sCustomer.Set(V.Passed.000027)
+F.Intrinsic.Control.If(V.Local.sCustomer,<>,"")
+	F.Intrinsic.String.Concat("SELECT CUSTOMER, COMM_TYPE FROM V_CUSTOMER_SALES WHERE CUSTOMER = '",V.Local.sCustomer,"'",V.Local.sQuery)
+	F.Intrinsic.Debug.SetLA("Retrieving Commission with following query: ",V.Local.sQuery)
+	F.ODBC.Connection!Conx.OpenRecordsetRO("rstComm",V.Local.sQuery)
+
+	F.Intrinsic.Control.If(V.ODBC.Conx!rstComm.EOF,<>,True)
+		'We need to get the actual commission description since this has the actual percent in it
+		F.Intrinsic.String.Build("SELECT COMM_DESC FROM V_COMMISSION_TYPES WHERE COMM_TYPE = '{0}'",V.ODBC.Conx!rstComm.FieldValTrim!COMM_TYPE,V.Local.sQuery)
+		F.ODBC.Connection!Conx.OpenLocalRecordsetRO("rstPercent",V.Local.sQuery)
+
+		F.Intrinsic.Control.If(V.ODBC.Conx!rstPercent.EOF,<>,True)
+			V.Local.sComm_Desc.Set(V.ODBC.Conx!rstPercent.FieldValTrim!COMM_DESC)
+			F.Intrinsic.String.Split(V.Local.sComm_Desc," ",V.Local.sComm_Desc)
+			'The percent should always be the first value
+			V.Local.sStrRet.Set(V.Local.sComm_Desc(0))
+		F.Intrinsic.Control.Else
+			'Close recordsets and let the user know that none was found
+			F.ODBC.Conx!rstPercent.Close
+			F.ODBC.Conx!rstComm.Close
+			F.Intrinsic.UI.Msgbox("Commission type not found.")
+			F.Intrinsic.Control.End
+
+		F.Intrinsic.Control.EndIf
+
+		F.ODBC.Conx!rstPercent.Close
+
+		F.Intrinsic.Math.IsNumeric(V.Local.sStrRet,V.Local.bNumeric)
+		F.Intrinsic.Control.If(V.Local.bNumeric,=,True)
+			F.Intrinsic.String.InStr(V.Local.sStrRet,".",1,V.Local.istrLength)
+
+			F.Intrinsic.Control.If(V.Local.istrLength,>,0)
+				F.Intrinsic.Control.SelectCase(V.Local.istrLength)
+				F.Intrinsic.Control.Case(1)
+					F.Intrinsic.Debug.SetLA("Found Commission record - Numeric: ",V.Local.sStrRet)
+					V.Local.fComm.Set(V.Local.sStrRet)
+					V.Passed.000024.Set(V.Local.fComm.Format00.00)
+				F.Intrinsic.Control.Case(2)
+					F.Intrinsic.Debug.SetLA("Found Commission record - Numeric: ",V.Local.sStrRet)
+					V.Local.fComm.Set(V.Local.sStrRet)
+					V.Passed.000024.Set(V.Local.fComm.Format0.00)
+				F.Intrinsic.Control.Case(3)
+					F.Intrinsic.Debug.SetLA("Found Commission record - Numeric: ",V.Local.sStrRet)
+					V.Local.fComm.Set(V.Local.sStrRet)
+					V.Passed.000024.Set(V.Local.fComm.Format00.00)
+				F.Intrinsic.Control.CaseElse
+					F.Intrinsic.UI.Msgbox("Commission for this customer is a larger numeric value then the system allows.")
+				F.Intrinsic.Control.EndSelect
+			F.Intrinsic.Control.EndIF
+
+			F.Intrinsic.Control.IF(V.Local.istrLength,=,0)
+
+				V.Local.istrLength.Set(V.Local.sStrRet.Length)
+				F.Intrinsic.Control.SelectCase(V.Local.istrLength)
+
+				F.Intrinsic.Control.Case(1)
+					F.Intrinsic.Debug.SetLA("Found Commission record - Numeric: ",V.Local.sStrRet)
+					V.Local.fComm.Set(V.Local.sStrRet)
+					V.Passed.000024.Set(V.Local.fComm.Format0.00)
+				F.Intrinsic.Control.Case(2)
+					F.Intrinsic.Debug.SetLA("Found Commission record - Numeric: ",V.Local.sStrRet)
+					V.Local.fComm.Set(V.Local.sStrRet)
+					V.Passed.000024.Set(V.Local.fComm.Format00.00)
+				F.Intrinsic.Control.CaseElse
+					F.Intrinsic.UI.Msgbox("Commission for this customer is a larger numeric value then the system allows.")
+				F.Intrinsic.Control.EndSelect
+
+			F.Intrinsic.Control.EndIF
+
+		F.Intrinsic.Control.Else
+			F.Intrinsic.Debug.SetLA("Found Commission record - Not numeric: ",V.ODBC.Conx!rstComm.FieldValTrim!COMM_TYPE)
+			V.Passed.000024.Set(V.ODBC.Conx!rstComm.FieldValTrim!COMM_TYPE)
+		F.Intrinsic.Control.EndIf
+
+	F.Intrinsic.Control.Else
+		F.ODBC.Conx!rstComm.Close
+		F.Intrinsic.String.Concat("SELECT PROSPECT, COMM_R FROM PROSPECT_AUX WHERE PROSPECT='",V.Local.sCustomer,"'",V.Local.sQuery)
+		F.Intrinsic.Debug.SetLA("Retrieving Commission with following query: ",V.Local.sQuery)
+		F.ODBC.Connection!Conx.OpenRecordsetRO("rstComm",V.Local.sQuery)
+
+		F.Intrinsic.Control.If(V.ODBC.Conx!rstComm.EOF,<>,True)
+			'We need to check the Commission Type table for the description
+			F.Intrinsic.String.Build("SELECT COMM_DESC FROM V_COMMISSION_TYPES WHERE COMM_TYPE = '{0}'",V.ODBC.Conx!rstComm.FieldValTrim!COMM_R,V.Local.sQuery)
+			F.ODBC.Connection!Conx.OpenLocalRecordsetRO("rstPercent",V.Local.sQuery)
+
+			F.Intrinsic.Control.If(V.ODBC.Conx!rstPercent.EOF,<>,True)
+				F.Intrinsic.String.Split(V.ODBC.Conx!rstPercent.FieldValTrim!COMM_DESC," ",V.Local.sComm_Desc)
+				'The percent should always be the first value
+				V.Local.sStrRet.Set(V.Local.sComm_Desc(0))
+			F.Intrinsic.Control.Else
+				'Close recordsets and let the user know that none was found
+				F.ODBC.Conx!rstPercent.Close
+				F.ODBC.Conx!rstComm.Close
+				F.Intrinsic.UI.Msgbox("Commission type not found.")
+				F.Intrinsic.Control.End
+
+			F.Intrinsic.Control.EndIf
+
+			F.ODBC.Conx!rstPercent.Close
+
+			F.Intrinsic.Math.IsNumeric(V.Local.sStrRet,V.Local.bNumeric)
+
+			F.Intrinsic.Control.If(V.Local.bNumeric,=,True)
+				F.Intrinsic.String.InStr(V.Local.sStrRet,".",1,V.Local.istrLength)
+
+					F.Intrinsic.Control.If(V.Local.istrLength,>,0)
+						F.Intrinsic.Control.SelectCase(V.Local.istrLength)
+						F.Intrinsic.Control.Case(1)
+							F.Intrinsic.Debug.SetLA("Found Commission record - Numeric: ",V.Local.sStrRet)
+							V.Local.fComm.Set(V.Local.sStrRet)
+							V.Passed.000024.Set(V.Local.fComm.Format00.00)
+						F.Intrinsic.Control.Case(2)
+							F.Intrinsic.Debug.SetLA("Found Commission record - Numeric: ",V.Local.sStrRet)
+							V.Local.fComm.Set(V.Local.sStrRet)
+							V.Passed.000024.Set(V.Local.fComm.Format0.00)
+						F.Intrinsic.Control.Case(3)
+							F.Intrinsic.Debug.SetLA("Found Commission record - Numeric: ",V.Local.sStrRet)
+							V.Local.fComm.Set(V.Local.sStrRet)
+							V.Passed.000024.Set(V.Local.fComm.Format00.00)
+						F.Intrinsic.Control.CaseElse
+							F.Intrinsic.UI.Msgbox("Commission for this customer is a larger numeric value then the system allows.")
+						F.Intrinsic.Control.EndSelect
+					F.Intrinsic.Control.EndIF
+
+					F.Intrinsic.Control.IF(V.Local.istrLength,=,0)
+
+						V.Local.istrLength.Set(V.Local.sStrRet.Length)
+						F.Intrinsic.Control.SelectCase(V.Local.istrLength)
+
+						F.Intrinsic.Control.Case(1)
+							F.Intrinsic.Debug.SetLA("Found Commission record - Numeric: ",V.Local.sStrRet)
+							V.Local.fComm.Set(V.Local.sStrRet)
+							V.Passed.000024.Set(V.Local.fComm.Format0.00)
+						F.Intrinsic.Control.Case(2)
+							F.Intrinsic.Debug.SetLA("Found Commission record - Numeric: ",V.Local.sStrRet)
+							V.Local.fComm.Set(V.Local.sStrRet)
+							V.Passed.000024.Set(V.Local.fComm.Format00.00)
+						F.Intrinsic.Control.CaseElse
+							F.Intrinsic.UI.Msgbox("Commission for this customer is a larger numeric value then the system allows.")
+						F.Intrinsic.Control.EndSelect
+
+					F.Intrinsic.Control.EndIF
+
+				F.Intrinsic.Control.Else
+					F.Intrinsic.Debug.SetLA("Found Commission record - Not numeric: ",V.Local.sVal(0))
+					V.Passed.000024.Set(V.Local.sVal(0))
+				F.Intrinsic.Control.EndIf
+			F.Intrinsic.Control.EndIf
+		F.Intrinsic.Control.EndIf
+	F.ODBC.Conx!rstComm.Close
+F.Intrinsic.Control.EndIf
+
+F.ODBC.Connection!Conx.Close
+
+Program.Sub.Main.End
+
+Program.Sub.Comments.Start
+${$0$}$$}$$}$12:00:00 AM$}$False
+Program.Sub.Comments.End
